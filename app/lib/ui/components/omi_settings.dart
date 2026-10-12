@@ -56,9 +56,15 @@ class OmiSectionHeader extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
+          // The trailing control sits beside the title while both fit and drops under it on a
+          // narrow phone or at a large text size, so the title never breaks beside it.
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: OmiSpacing.sm,
+            runSpacing: OmiSpacing.xs,
             children: [
-              Expanded(child: Semantics(header: true, child: Text(title, style: OmiType.title3))),
+              Semantics(header: true, child: Text(title, style: OmiType.title3)),
               if (trailing != null) trailing!,
             ],
           ),
