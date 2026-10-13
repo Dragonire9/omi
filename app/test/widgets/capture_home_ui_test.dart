@@ -640,9 +640,10 @@ void main() {
       expect(glyphs.map((g) => g.critical), [false, true]);
       expect(tester.getSize(find.byType(BatteryGlyph).first), const Size(20, 10));
     });
-  
+
   group('Transcribe Later (batch) card controls', () {
-    testWidgets('tapping Pause in batch mode transitions button to Resume, clears spinner, and freezes elapsed timer', (tester) async {
+    testWidgets('tapping Pause in batch mode transitions button to Resume, clears spinner, and freezes elapsed timer',
+        (tester) async {
       final capture = _Capture(_Live.pendantBatch, batch: true);
       await pump(tester, const ConversationCaptureWidget(showsCall: true), capture: capture);
       expect(find.text(en.recording), findsOneWidget);
@@ -681,4 +682,4 @@ void main() {
       expect(find.byType(OmiSpinner), findsNothing);
     });
   });
-});
+}
