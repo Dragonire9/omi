@@ -47,5 +47,25 @@ void main() {
       expect(world.sockets.length, count + 1);
       expect(world.deviceConnection!.openAudioSubscriptions, 1);
     });
+
+    test('pendant batch mode pause sets recordingState to pause, freezes elapsed timer, and resume restores deviceRecord', () async {
+      await world.preferences.saveBool('batchModeEnabled', true);
+      world.controller.updateRecordingState(RecordingState.deviceRecord);
+      expect(world.controller.offlineMuted, false);
+
+      await world.controller.toggleOfflineMute();
+      await world.settle();
+
+      expect(world.controller.offlineMuted, true);
+      expect(world.controller.recordingState, RecordingState.pause);
+      expect(world.controller.isPaused, true);
+
+      await world.controller.toggleOfflineMute();
+      await world.settle();
+
+      expect(world.controller.offlineMuted, false);
+      expect(world.controller.recordingState, RecordingState.deviceRecord);
+      expect(world.controller.isPaused, false);
+    });
   }
 }
