@@ -138,6 +138,27 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
+def _heal_locked_conversations_if_paid(uid: str, conversations: List[Dict[str, Any]]) -> None:
+    if not any(c.get('is_locked') for c in conversations):
+        return
+    try:
+        from models.users import PlanType, Subscription
+        from utils.subscription import is_paid_plan
+
+        subscription = users_db.get_user_valid_subscription(uid, provision=False)
+        if (
+            isinstance(subscription, Subscription)
+            and isinstance(subscription.plan, PlanType)
+            and is_paid_plan(subscription.plan)
+        ):
+            for c in conversations:
+                if c.get('is_locked'):
+                    c['is_locked'] = False
+                    conversations_db.update_conversation(uid, c['id'], {'is_locked': False})
+    except Exception:
+        pass
+
+
 def _get_valid_conversation_by_id(uid: str, conversation_id: str, *, follow_sync_bridge: bool = False) -> dict:
     conversation = conversations_db.get_conversation(
         uid, conversation_id, read_site=FirestoreReadSite.CONVERSATIONS_VALID_BY_ID
@@ -158,7 +179,9 @@ def _get_valid_conversation_by_id(uid: str, conversation_id: str, *, follow_sync
             raise HTTPException(status_code=404, detail="Conversation not found")
 
     if conversation.get('is_locked', False):
-        raise HTTPException(status_code=402, detail="A paid plan is required to access this conversation.")
+        _heal_locked_conversations_if_paid(uid, [conversation])
+        if conversation.get('is_locked', False):
+            raise HTTPException(status_code=402, detail="A paid plan is required to access this conversation.")
 
     return conversation
 
@@ -999,6 +1022,7 @@ def get_conversations(
         budget=budget,
     )
 
+    _heal_locked_conversations_if_paid(uid, conversations)
     redact_conversations_for_list(conversations)
     if budget.truncated and response is not None:
         response.headers[OMI_LIST_TRUNCATED_HEADER] = OMI_LIST_TRUNCATED_VALUE

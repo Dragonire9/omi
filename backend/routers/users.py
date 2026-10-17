@@ -94,6 +94,7 @@ from utils.apps import get_available_app_by_id
 from database.fsr_read_cache import fresh_cache_reads
 from utils.subscription import (
     DESKTOP_CHAT_BYOK_PROVIDER,
+    is_paid_plan,
     resolve_transcription_allowance,
     request_has_llm_byok_key,
     request_has_byok_provider,
@@ -1235,6 +1236,20 @@ def get_user_subscription_endpoint(
     if allowance.remaining_seconds is None or (allowance.limit_seconds is not None and allowance.limit_seconds > 0):
         response.transcription_seconds_limit = allowance.limit_seconds or 0
         response.subscription.limits.transcription_seconds = allowance.limit_seconds
+    if response.subscription and is_paid_plan(response.subscription.plan):
+        try:
+            if redis_db.r.set(f'users:{uid}:paid_unlock_sweep', '1', nx=True, ex=300):
+                from database import (
+                    action_items as action_items_db,
+                    conversations as conversations_db,
+                    memories as memories_db,
+                )
+
+                db_executor.submit(conversations_db.unlock_all_conversations, uid)
+                db_executor.submit(memories_db.unlock_all_memories, uid)
+                db_executor.submit(action_items_db.unlock_all_action_items, uid)
+        except Exception as e:
+            logger.warning(f"Failed to schedule background unlock sweep for paid user {uid}: {e}")
     return response
 
 
